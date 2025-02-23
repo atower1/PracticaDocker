@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    networks:
+      - backend-network
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: --skip-ssl --ssl=0 --require-secure-transport=OFF
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+
+  wordpress:
+    image: bitnami/wordpress:latest
+    container_name: wordpress_app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - frontend-network
+      - backend-network
+    environment:
+      WORDPRESS_DATABASE_HOST: ${WORDPRESS_DATABASE_HOST}
+      WORDPRESS_DATABASE_USER: ${WORDPRESS_DATABASE_USER}
+      WORDPRESS_DATABASE_PASSWORD: ${WORDPRESS_PASSWORD}
+      WORDPRESS_DATABASE_NAME: ${WORDPRESS_DATABASE_NAME}
+      WORDPRESS_BLOG_NAME: ${WORDPRESS_BLOG_NAME}
+      WORDPRESS_USERNAME: ${WORDPRESS_USERNAME}
+      WORDPRESS_PASSWORD: ${WORDPRESS_PASSWORD}
+      WORDPRESS_EMAIL: ${WORDPRESS_EMAIL}
+      WORDPRESS_DATABASE_ENABLE_SSL: "no"
+      MYSQL_CLIENT_OPTIONS: "--skip-ssl-verify-server-cert"
+    volumes:
+      - wp_data:/bitnami/wordpress
+    ports:
+      - "80:8080"  # Mapea el puerto 8080 del contenedor a 80 en el host
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_app
+    restart: always
+    depends_on:
+      - mysql
+    networks:
+      - frontend-network
+      - backend-network
+    environment:
+      PMA_HOST: ${PMA_HOST}
+      PMA_PORT: ${PMA_PORT}
+      PMA_ARBITRARY: ${PMA_ARBITRARY}
+      PMA_USER: ${PMA_USER}
+      PMA_PASSWORD: ${PMA_PASSWORD}
+      MYSQL_CLIENT_OPTIONS: "--disable-ssl"
+    ports:
+      - "8081:80"
+
+volumes:
+  db_data:
+  wp_data:
+
+networks:
+  frontend-network:
+  backend-network:
